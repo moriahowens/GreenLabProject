@@ -13,11 +13,19 @@ install.packages("tidyverse", type = "binary")
 setwd("Y1P1/GreenLabProject")
 
 dat_data <- read.csv("run_table.csv") %>%
-  select(library, dataframe_size, trial, energy_usage, execution_time, cpu_usage, memory_usage) %>%
+  select(run, energy_usage_joules, execution_time_sec, input_size_kb, memory_usage_mb, output_size_kb, cpu_percent, prompt_size, model, api, mobile) %>%
   mutate(
-    library = factor(library),
-    dataframe_size = factor(dataframe_size),
-    trial = factor(trial)
+    run = factor(run),
+    energy_usage_joules = factor(energy_usage_joules),
+    execution_time_sec = factor(execution_time_sec),
+    input_size_kb = factor(input_size_kb),
+    memory_usage_mb = factor(memory_usage_mb),
+    output_size_kb = factor(output_size_kb),
+    cpu_percent = factor(cpu_percent),
+    prompt_size = factor(prompt_size),
+    model = factor(model),
+    api = factor(api),
+    mobile = factor(mobile)
   )
 
 glimpse(dat_data)
