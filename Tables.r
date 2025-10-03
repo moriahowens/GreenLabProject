@@ -32,8 +32,12 @@ glimpse(dat_data)
 summary(dat_data)
 head(dat_data)
 
-# Histogram of overall energy usage
-ggplot(dat_data, aes(x = energy_usage)) +
+str(dat_data$energy_usage_joules)
+
+# Histogram of overall energy usage -- this actually lowkey has no meaning for us :)
+dat_data <- dat_data %>%
+  mutate(energy_usage_joules = as.numeric(as.character(energy_usage_joules)))
+ggplot(dat_data, aes(x = energy_usage_joules)) +
   geom_histogram(bins = 30, fill = "skyblue", color = "black", alpha = 0.7) +
   theme_minimal() +
   labs(
@@ -42,15 +46,15 @@ ggplot(dat_data, aes(x = energy_usage)) +
     y = "Frequency"
   )
 
-# Histogram split by library
-ggplot(dat_data, aes(x = energy_usage, fill = library)) +
+# Histogram split by on-device v. remote -- again not sure histogram is the chart to use 
+ggplot(dat_data, aes(x = energy_usage_joules, fill = mobile)) +
   geom_histogram(bins = 30, alpha = 0.6, position = "identity") +
   theme_minimal() +
   labs(
-    title = "Energy Usage Distribution by Library",
+    title = "Energy Usage Distribution by Setting",
     x = "Energy Usage",
     y = "Frequency",
-    fill = "Library"
+    fill = "On-device LLM?"
   )
 
 # Boxplots of energy_usage grouped by library and dataframe_size to compare distributions across experimental conditions.
