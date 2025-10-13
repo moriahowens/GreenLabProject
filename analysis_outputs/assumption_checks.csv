@@ -1,7 +1,0 @@
-"variable","shapiro_no_p","shapiro_yes_p","note","bf_p","bf_note"
-"energy_usage_joules",7.69598872244267e-14,1.08344929488624e-10,"ok",3.24044701469131e-14,"ok"
-"execution_time_sec",7.8767253880402e-14,1.24725786480281e-10,"ok",3.69837029965548e-07,"ok"
-"cpu_percent",2.13929525080974e-12,8.71696542230725e-16,"ok",1.03334501657041e-06,"ok"
-"memory_usage_mb",3.35030281613056e-08,1.03775614428561e-12,"ok",2.9703009480031e-41,"ok"
-"input_size_kb",NA,NA,"too few unique values",0.317985931527569,"ok"
-"output_size_kb",9.37329534183184e-17,8.1008383875776e-07,"ok",2.37914945888563e-19,"ok"

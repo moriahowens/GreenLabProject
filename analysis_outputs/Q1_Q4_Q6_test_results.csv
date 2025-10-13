@@ -1,6 +1,0 @@
-"variable","test","p_value","effect","effect_type","n_no","n_yes","p_adj"
-"energy_usage_joules","Wilcoxon rank-sum",6.91272191987387e-11,0.397530864197531,"Cliff's delta",180,180,2.07381657596216e-10
-"execution_time_sec","Wilcoxon rank-sum",5.55209962692808e-09,0.355308641975309,"Cliff's delta",180,180,1.11041992538562e-08
-"cpu_percent","Wilcoxon rank-sum",2.89401436187304e-20,-0.562037037037037,"Cliff's delta",180,180,1.15760574474921e-19
-"memory_usage_mb","Wilcoxon rank-sum",1.5702490547405e-60,1,"Cliff's delta",180,180,7.85124527370252e-60
-"input_size_kb","Wilcoxon rank-sum",1,0,"Cliff's delta",180,180,1
