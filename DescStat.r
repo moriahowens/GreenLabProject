@@ -541,6 +541,15 @@ ggplot(mobile_data, aes(x = seq_along(memory_usage_mb), y = memory_usage_mb, col
 ## Used for RQ1 --------------
 ## Violin Plot for Energy Usage based on remote or mobile and prompt size
 plot_energy_violin <- function(data, y_var = "energy_usage_joules") {
+  data <- data %>%
+    mutate(
+      llm_location = factor(llm_location,
+                            levels = c("remote", "mobile"),
+                            labels = c("Remote", "On-device")),
+      prompt_size = factor(prompt_size,
+                           levels = c("small", "large")) # ensures small on left, large on right
+    )
+  
   ggplot(data, aes(
     x = llm_location,
     y = .data[[y_var]],
@@ -548,11 +557,20 @@ plot_energy_violin <- function(data, y_var = "energy_usage_joules") {
   )) +
     geom_violin(alpha = 0.4, trim = FALSE) +
     geom_boxplot(width = 0.15, outlier.shape = NA, alpha = 0.6) +
-    facet_wrap(~ prompt_size, nrow = 1, labeller = labeller(prompt_size = label_both)) +
-    scale_fill_manual(values = c("#F28E2B", "#4E79A7")) + 
+    facet_wrap(
+      ~ prompt_size,
+      nrow = 1,
+      labeller = labeller(
+        prompt_size = c(
+          small = "Prompt Size: Small",
+          large = "Prompt Size: Large"
+        )
+      )
+    ) +
+    scale_fill_manual(values = c("Remote" = "#1E88E5", "On-device" = "#D81B60")) +
     labs(
       x = NULL,
-      y = "Energy Usage (J)"
+      y = "Energy Usage (Joules)"
     ) +
     theme_minimal(base_size = 13) +
     theme(
@@ -562,6 +580,7 @@ plot_energy_violin <- function(data, y_var = "energy_usage_joules") {
       axis.text.x = element_text(face = "bold")
     )
 }
+
 
 plot_energy_violin(dat_data)
 
@@ -639,7 +658,7 @@ energy_summary <- dat_data %>%
 ggplot(energy_summary, aes(x = model, y = mean_energy, fill = llm_location)) +
   geom_bar(stat = "identity", position = position_dodge(width = 0.8)) +
   scale_fill_manual(
-    values = c("remote" = "#0072B2", "mobile" = "#E69F00"),
+    values = c("remote" = "#D81B60", "mobile" = "#1E88E5"),
     name = "Model location",
     labels = c("On-device", "Remote")
   ) +
@@ -667,6 +686,15 @@ dat_data %>%
 
 ## Violin Plot for execution time based on remote or mobile and prompt size
 plot_energy_violin <- function(data, y_var = "execution_time_sec") {
+  data <- data %>%
+    mutate(
+      llm_location = factor(llm_location,
+                            levels = c("remote", "mobile"),
+                            labels = c("Remote", "On-device")),
+      prompt_size = factor(prompt_size,
+                           levels = c("small", "large")) # ensures small on left, large on right
+    )
+  
   ggplot(data, aes(
     x = llm_location,
     y = .data[[y_var]],
@@ -674,8 +702,17 @@ plot_energy_violin <- function(data, y_var = "execution_time_sec") {
   )) +
     geom_violin(alpha = 0.4, trim = FALSE) +
     geom_boxplot(width = 0.15, outlier.shape = NA, alpha = 0.6) +
-    facet_wrap(~ prompt_size, nrow = 1, labeller = labeller(prompt_size = label_both)) +
-    scale_fill_manual(values = c("#F28E2B", "#4E79A7")) + 
+    facet_wrap(
+      ~ prompt_size,
+      nrow = 1,
+      labeller = labeller(
+        prompt_size = c(
+          small = "Prompt Size: Small",
+          large = "Prompt Size: Large"
+        )
+      )
+    ) +
+    scale_fill_manual(values = c("Remote" = "#1E88E5", "On-device" = "#D81B60")) +
     labs(
       x = NULL,
       y = "Execution Time (sec)"
@@ -691,21 +728,20 @@ plot_energy_violin <- function(data, y_var = "execution_time_sec") {
 
 plot_energy_violin(dat_data)
 
+# Noted here that the violins for execution time and energy use looked remarkably similar, 
+# so performed this as a check to make sure nothing had been accidentally overwritten.
+cor(dat_data$energy_usage_joules, dat_data$execution_time_sec, use = "complete.obs")
+summary(dat_data$energy_usage_joules)
+summary(dat_data$execution_time_sec)
+
+
 ## Bar chart Q2
-dat_data <- dat_data %>%
-  mutate(model = factor(model, levels = c("gemma", "gemma-1b", 
-                                          "llama2", "llama-1b", 
-                                          "qwen", "qwen-1.7b")))
-
-execution_time_summary <- dat_data %>%
-  group_by(model, llm_location) %>%
-  summarise(mean_time = mean(execution_time_sec, na.rm = TRUE), .groups = "drop")
-
 ggplot(execution_time_summary, aes(x = model, y = mean_time, fill = llm_location)) +
   geom_bar(stat = "identity", position = position_dodge(width = 0.8)) +
   scale_fill_manual(
-    values = c("remote" = "#0072B2", "mobile" = "#E69F00"),
+    values = c("mobile" = "#D81B60", "remote" = "#1E88E5"),  # On-device = pink, Remote = blue
     name = "Model location",
+    breaks = c("mobile", "remote"),  # On-device first, Remote second
     labels = c("On-device", "Remote")
   ) +
   labs(
@@ -717,38 +753,64 @@ ggplot(execution_time_summary, aes(x = model, y = mean_time, fill = llm_location
   theme(
     plot.title = element_text(face = "bold", hjust = 0.5),
     legend.position = "top",
+    legend.justification = "center",
     axis.text.x = element_text(angle = 30, hjust = 1)
   )
+
 
 # --------------------
 ## RQ3 and RQ4
 
 # CPU usage plot
-p_cpu <- ggplot(dat_data, aes(x = llm_location, y = cpu_percent, fill = llm_location)) +
+p_cpu <- dat_data %>%
+  mutate(
+    llm_location = factor(
+      llm_location,
+      levels = c("remote", "mobile"),
+      labels = c("Remote", "On-device")  # capitalized
+    )
+  ) %>%
+  ggplot(aes(x = llm_location, y = cpu_percent, fill = llm_location)) +
   geom_violin(trim = FALSE, alpha = 0.4, color = NA) +
   geom_boxplot(width = 0.1, outlier.size = 0.8, alpha = 0.7) +
-  scale_fill_manual(values = c("on_device" = "#4575b4", "remote" = "#d73027")) +
-  labs(x = NULL, y = "CPU Usage (%)", title = "CPU Usage") +
+  scale_fill_manual(values = c("Remote" = "#1E88E5", "On-device" = "#D81B60")) +
+  labs(
+    x = NULL,
+    y = "CPU Usage (%)",
+    title = "CPU Usage"
+  ) +
   theme_minimal(base_size = 14) +
   theme(
     legend.position = "none",
-    axis.text.x = element_text(size = 12),
-    plot.title = element_text(hjust = 0.5)
+    axis.text.x = element_text(size = 12, face = "bold"),
+    plot.title = element_text(hjust = 0.5, face = "bold")
   )
 
 p_cpu
 
 # Memory usage plot
-p_memory <- ggplot(dat_data, aes(x = llm_location, y = memory_usage_mb, fill = llm_location)) +
+p_memory <- dat_data %>%
+  mutate(
+    llm_location = factor(
+      llm_location,
+      levels = c("remote", "mobile"),
+      labels = c("Remote", "On-device")  # capitalized labels
+    )
+  ) %>%
+  ggplot(aes(x = llm_location, y = memory_usage_mb, fill = llm_location)) +
   geom_violin(trim = FALSE, alpha = 0.4, color = NA) +
   geom_boxplot(width = 0.1, outlier.size = 0.8, alpha = 0.7) +
-  scale_fill_manual(values = c("on_device" = "#4575b4", "remote" = "#d73027")) +
-  labs(x = NULL, y = "Memory Usage (MB)", title = "Memory Usage") +
+  scale_fill_manual(values = c("Remote" = "#1E88E5", "On-device" = "#D81B60")) +
+  labs(
+    x = NULL,
+    y = "Memory Usage (MB)",
+    title = "Memory Usage"
+  ) +
   theme_minimal(base_size = 14) +
   theme(
     legend.position = "none",
-    axis.text.x = element_text(size = 12),
-    plot.title = element_text(hjust = 0.5)
+    axis.text.x = element_text(size = 12, face = "bold"),
+    plot.title = element_text(hjust = 0.5, face = "bold")
   )
 
 p_memory
@@ -759,42 +821,66 @@ p_cpu + p_memory
 ## RQ5
 
 # By LLM Location
-p_cpu_energy <- ggplot(dat_data, aes(x = cpu_percent, y = energy_usage_joules, color = llm_location)) +
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = "lm", se = TRUE) +
+p_cpu_energy <- dat_data %>%
+  mutate(
+    llm_location = factor(
+      llm_location,
+      levels = c("remote", "mobile"),
+      labels = c("Remote", "On-device")
+    )
+  ) %>%
+  ggplot(aes(x = cpu_percent, y = energy_usage_joules, color = llm_location)) +
+  geom_point(alpha = 0.5, size = 2) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 0.8) +
+  scale_color_manual(
+    name = "LLM Location",
+    values = c("Remote" = "#1E88E5", "On-device" = "#D81B60")
+  ) +
   labs(
     title = "Energy Consumption vs CPU Usage",
     x = "CPU Usage (%)",
     y = "Energy Consumption (J)"
   ) +
-  scale_color_manual(name = "LLM Location", values = c("remote" = "#d73027", "mobile" = "#4575b4")) +
-  theme_minimal() +
+  theme_minimal(base_size = 13) +
   theme(
-    plot.title = element_text(size = 13), 
-    axis.title = element_text(size = 9),
-    axis.text = element_text(size = 8),
-    legend.title = element_text(size = 9),
-    legend.text = element_text(size = 8)
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 11, face = "bold"),
+    axis.text = element_text(size = 10),
+    legend.title = element_text(size = 10, face = "bold"),
+    legend.text = element_text(size = 9),
+    panel.grid.minor = element_blank()
   )
 
 p_cpu_energy
 
-p_memory_energy <- ggplot(dat_data, aes(x = memory_usage_mb, y = energy_usage_joules, color = llm_location)) +
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = "lm", se = TRUE) +
+p_memory_energy <- dat_data %>%
+  mutate(
+    llm_location = factor(
+      llm_location,
+      levels = c("remote", "mobile"),
+      labels = c("Remote", "On-device")
+    )
+  ) %>%
+  ggplot(aes(x = memory_usage_mb, y = energy_usage_joules, color = llm_location)) +
+  geom_point(alpha = 0.5, size = 2) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 0.8) +
+  scale_color_manual(
+    name = "LLM Location",
+    values = c("Remote" = "#1E88E5", "On-device" = "#D81B60")
+  ) +
   labs(
     title = "Energy Consumption vs Memory Usage",
     x = "Memory Usage (MB)",
     y = "Energy Consumption (J)"
   ) +
-  scale_color_manual(name = "LLM Location", values = c("remote" = "#d73027", "mobile" = "#4575b4")) +
-  theme_minimal() +
+  theme_minimal(base_size = 13) +
   theme(
-    plot.title = element_text(size = 13), 
-    axis.title = element_text(size = 9),
-    axis.text = element_text(size = 8),
-    legend.title = element_text(size = 9),
-    legend.text = element_text(size = 8)
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 11, face = "bold"),
+    axis.text = element_text(size = 10),
+    legend.title = element_text(size = 10, face = "bold"),
+    legend.text = element_text(size = 9),
+    panel.grid.minor = element_blank()
   )
 
 p_memory_energy
@@ -803,42 +889,67 @@ p_cpu_energy + p_memory_energy
 
 
 # By Prompt Size
-p_cpu_energy <- ggplot(dat_data, aes(x = cpu_percent, y = energy_usage_joules, color = prompt_size)) +
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = "lm", se = TRUE) +
+
+p_cpu_energy <- dat_data %>%
+  mutate(
+    prompt_size = factor(
+      prompt_size,
+      levels = c("small", "large"),
+      labels = c("Small", "Large")
+    )
+  ) %>%
+  ggplot(aes(x = cpu_percent, y = energy_usage_joules, color = prompt_size)) +
+  geom_point(alpha = 0.5, size = 2) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 0.8) +
+  scale_color_manual(
+    name = "Prompt Size",
+    values = c("Small" = "#FFC107", "Large" = "#004D40")
+  ) +
   labs(
     title = "Energy Consumption vs CPU Usage",
     x = "CPU Usage (%)",
     y = "Energy Consumption (J)"
   ) +
-  scale_color_manual(name = "Prompt Size", values = c("small" = "#d73027", "large" = "#4575b4")) +
-  theme_minimal() +
+  theme_minimal(base_size = 13) +
   theme(
-    plot.title = element_text(size = 13), 
-    axis.title = element_text(size = 9),
-    axis.text = element_text(size = 8),
-    legend.title = element_text(size = 9),
-    legend.text = element_text(size = 8)
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 11, face = "bold"),
+    axis.text = element_text(size = 10),
+    legend.title = element_text(size = 10, face = "bold"),
+    legend.text = element_text(size = 9),
+    panel.grid.minor = element_blank()
   )
 
 p_cpu_energy
 
-p_memory_energy <- ggplot(dat_data, aes(x = memory_usage_mb, y = energy_usage_joules, color = prompt_size)) +
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = "lm", se = TRUE) +
+p_memory_energy <- dat_data %>%
+  mutate(
+    prompt_size = factor(
+      prompt_size,
+      levels = c("small", "large"),
+      labels = c("Small", "Large")
+    )
+  ) %>%
+  ggplot(aes(x = memory_usage_mb, y = energy_usage_joules, color = prompt_size)) +
+  geom_point(alpha = 0.5, size = 2) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 0.8) +
+  scale_color_manual(
+    name = "Prompt Size",
+    values = c("Small" = "#FFC107", "Large" = "#004D40")
+  ) +
   labs(
     title = "Energy Consumption vs Memory Usage",
     x = "Memory Usage (MB)",
     y = "Energy Consumption (J)"
   ) +
-  scale_color_manual(name = "Prompt Size", values = c("small" = "#d73027", "large" = "#4575b4")) +
-  theme_minimal() +
+  theme_minimal(base_size = 13) +
   theme(
-    plot.title = element_text(size = 13), 
-    axis.title = element_text(size = 9),
-    axis.text = element_text(size = 8),
-    legend.title = element_text(size = 9),
-    legend.text = element_text(size = 8)
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 11, face = "bold"),
+    axis.text = element_text(size = 10),
+    legend.title = element_text(size = 10, face = "bold"),
+    legend.text = element_text(size = 9),
+    panel.grid.minor = element_blank()
   )
 
 p_memory_energy
@@ -847,53 +958,64 @@ p_cpu_energy + p_memory_energy
 
 ## --------------------
 ## RQ6
-
-ggplot(dat_data, aes(x = factor(prompt_size, levels = c("small", "large")), 
-                     y = energy_usage_joules, fill = llm_location)) +
-  geom_violin(trim = FALSE, alpha = 0.6) +
-  geom_boxplot(width = 0.1, outlier.shape = NA, alpha = 0.8) +
+# Violin
+p_energy_prompt_llm <- ggplot(
+  dat_data, 
+  aes(x = factor(prompt_size, levels = c("small", "large")), 
+      y = energy_usage_joules, 
+      fill = llm_location)
+) +
+  geom_violin(trim = FALSE, alpha = 0.4, color = NA) +
+  geom_boxplot(width = 0.1, outlier.size = 0.8, alpha = 0.7) +
   labs(
     title = "Energy Consumption by Content Size and LLM Location",
     x = "Content Size",
     y = "Energy Usage (J)",
     fill = "LLM Location"
   ) +
-  scale_fill_manual(values = c("remote" = "#d73027", "mobile" = "#4575b4")) +
-  theme_minimal() +
+  scale_x_discrete(labels = c("Small", "Large")) +
+  scale_fill_manual(
+    values = c("mobile" = "#4575b4", "remote" = "#d73027"),
+    labels = c("On-device", "Remote")
+  ) +
+  theme_minimal(base_size = 14) +
   theme(
-    plot.title = element_text(size = 9, face = "bold"),
-    axis.title = element_text(size = 8.5),
+    legend.position = "right",
+    plot.title = element_text(size = 13, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 9),
     axis.text = element_text(size = 8),
-    legend.title = element_text(size = 8.5),
+    legend.title = element_text(size = 9),
     legend.text = element_text(size = 8)
   )
 
-dat_data <- dat_data %>%
-  mutate(model = factor(model, levels = c("gemma", "gemma-1b", 
-                                          "llama2", "llama-1b", 
-                                          "qwen", "qwen-1.7b")))
+p_energy_prompt_llm
 
-# Summarize mean energy by model and prompt size
+# Bar
 energy_prompt_summary <- dat_data %>%
   group_by(model, prompt_size) %>%
   summarise(mean_energy = mean(energy_usage_joules, na.rm = TRUE), .groups = "drop")
 
-ggplot(energy_prompt_summary, aes(x = model, y = mean_energy, fill = prompt_size)) +
-  geom_bar(stat = "identity", position = position_dodge(width = 0.8)) +
+p_energy_prompt_bar <- ggplot(energy_prompt_summary, aes(x = model, y = mean_energy, fill = prompt_size)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), color = "white", width = 0.7) +
   scale_fill_manual(
-    values = c("small" = "#56B4E9", "large" = "#D55E00"),
+    values = c("small" = "#FFC107", "large" = "#004D40"),
     name = "Prompt Size",
-    labels = c("Large Prompt", "Small Prompt")
+    labels = c("Small", "Large")
   ) +
   labs(
     title = "Mean Energy Consumption by Model and Prompt Size",
     x = "Model",
-    y = "Mean Energy Usage (Joules)"
+    y = "Mean Energy Usage (J)"
   ) +
-  theme_minimal(base_size = 13) +
+  theme_minimal(base_size = 14) +
   theme(
-    plot.title = element_text(hjust = 0.5),
+    plot.title = element_text(size = 13, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 9),
+    axis.text = element_text(size = 8),
+    axis.text.x = element_text(angle = 30, hjust = 1),
     legend.position = "top",
-    axis.text.x = element_text(angle = 30, hjust = 1)
+    legend.title = element_text(size = 9),
+    legend.text = element_text(size = 8)
   )
 
+p_energy_prompt_bar
