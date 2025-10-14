@@ -1,4 +1,4 @@
-## This is the code that makes the big Table 2 and all plots :)
+## This is the code that makes the big Table 2 and all plots
 
 install.packages(c("tidyverse", "ggplot2", "bestNormalize", "ARTool", "lmerTest", "xtable", "kableExtra", "effsize"))
 install.packages(c("patchwork"))
@@ -16,6 +16,7 @@ library(effsize)
 library(patchwork) 
 library(ggpubr)
 
+# You will need to add the path below if you are not in the Green Lab Project repo folder
 
 ## Load and Parse all data
 
@@ -100,9 +101,74 @@ glimpse(outlier_summary)
 # Outliers found in cpu_percent (9 outliers, no pattern) used and memory_usage (6 outliers, consective runs (175-180))
 # Outliers will remain in the data set but be analyzed within the Threats to Validity section.
 
-# RQ5: How do CPU usage, GPU usage, and memory usage impact energy consumption?
-
 ## Check for normality
+
+## Attempt normalization
+vars_to_check <- c(
+  "energy_usage_joules",
+  "execution_time_sec",
+  "memory_usage_mb",
+  "cpu_percent"
+)
+
+# Check pre-occuring normality with Shapiro Wilk
+check_normality <- function(x) {
+  x <- na.omit(x)
+  if (length(unique(x)) < 3) return(NA)  # skip if too few unique values
+  return(shapiro.test(x)$p.value)
+}
+
+# Loop through variables and conditions to attempt normalization
+for (var in vars_to_check) {
+  cat("---------------------------------------\n")
+  cat("Variable:", var, "\n")
+
+  for (m in unique(dat_data$model)) {
+    for (p in unique(dat_data$prompt_size)) {
+
+      subset_data <- dat_data %>%
+        filter(model == m, prompt_size == p) %>%
+        pull(var)
+
+      if (length(subset_data) < 3 || all(is.na(subset_data))) next
+
+      p_original <- check_normality(subset_data)
+
+      cat("\nModel:", m, "| Prompt size:", p, "\n")
+      cat("  Original normality p =", round(p_original, 4), "\n")
+
+      # Only test transformations if non-normal
+      if (!is.na(p_original) && p_original < 0.05) {
+
+        transformations <- list(
+          log = function(x) if (all(x > 0)) log(x) else NA,
+          sqrt = function(x) if (all(x >= 0)) sqrt(x) else NA,
+          square = function(x) x^2,
+          cube = function(x) x^3
+        )
+
+        for (t_name in names(transformations)) {
+          transformed <- suppressWarnings(transformations[[t_name]](subset_data))
+          if (all(is.na(transformed))) {
+            cat("   ", t_name, ": Not applicable (contains negative or zero values)\n")
+          } else {
+            p_trans <- check_normality(transformed)
+            if (!is.na(p_trans)) {
+              cat("   ", t_name, ": p =", round(p_trans, 4),
+                  ifelse(p_trans > 0.05, "Normalizable\n", "Still non-normal\n"))
+            }
+          }
+        }
+
+      } else if (!is.na(p_original)) {
+        cat("Already normal (p > 0.05)\n")
+      }
+    }
+  }
+}
+
+
+# -------------------------------------------------------------------------------------------------------------
 
 # RQ5: ENERGY USAGE normality check, divided by LLM location - both NOT NORMAL
 ## This was before I realized I needed to split based on factors of model and content length
@@ -320,8 +386,9 @@ ggplot(mobile_data, aes(x = seq_along(memory_usage_mb), y = memory_usage_mb)) +
     plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
   )
 
+# -------------------------------------------------------------------------------------------------------------
 
-## This was AFTER -- these are the correct functions
+## This was AFTER -- these are the correct functions!
 # ENERGY USAGE
 dat_data %>%
   group_by(llm_location, model, prompt_size) %>%
@@ -482,7 +549,7 @@ plot_energy_violin <- function(data, y_var = "energy_usage_joules") {
     geom_violin(alpha = 0.4, trim = FALSE) +
     geom_boxplot(width = 0.15, outlier.shape = NA, alpha = 0.6) +
     facet_wrap(~ prompt_size, nrow = 1, labeller = labeller(prompt_size = label_both)) +
-    scale_fill_manual(values = c("#F28E2B", "#4E79A7")) + # soft orange + blue
+    scale_fill_manual(values = c("#F28E2B", "#4E79A7")) + 
     labs(
       x = NULL,
       y = "Energy Usage (J)"
@@ -546,7 +613,6 @@ make_summary_latex <- function(data) {
     row_spec(0, bold = TRUE) %>%
     row_spec(1:nrow(summary_table), background = rep(c("gray!10", "white"), length.out = nrow(summary_table)))
 
-  # Wrap in resizebox for full-width
   latex_table <- paste0(
     "\\begin{table}[H]\n\\centering\n\\resizebox{\\textwidth}{!}{%\n",
     latex_table,
@@ -609,7 +675,7 @@ plot_energy_violin <- function(data, y_var = "execution_time_sec") {
     geom_violin(alpha = 0.4, trim = FALSE) +
     geom_boxplot(width = 0.15, outlier.shape = NA, alpha = 0.6) +
     facet_wrap(~ prompt_size, nrow = 1, labeller = labeller(prompt_size = label_both)) +
-    scale_fill_manual(values = c("#F28E2B", "#4E79A7")) + # soft orange + blue
+    scale_fill_manual(values = c("#F28E2B", "#4E79A7")) + 
     labs(
       x = NULL,
       y = "Execution Time (sec)"
@@ -830,3 +896,4 @@ ggplot(energy_prompt_summary, aes(x = model, y = mean_energy, fill = prompt_size
     legend.position = "top",
     axis.text.x = element_text(angle = 30, hjust = 1)
   )
+

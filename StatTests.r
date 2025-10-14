@@ -4,6 +4,8 @@ library(dplyr)
 library(rstatix)
 library(effsize)
 
+# You will need to add the path below if you are not in the Green Lab Project repo folder
+
 ## Data read (same as DescStat)
 dat_data <- read.csv("run_table.csv") %>%
   select(run, energy_usage_joules, execution_time_sec, input_size_kb, memory_usage_mb, output_size_kb, cpu_percent, prompt_size, model, api, mobile) %>%
