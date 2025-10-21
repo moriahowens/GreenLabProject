@@ -98,6 +98,7 @@ outlier_summary <- map_dfr(names(outlier_list), function(v) {
 })
 
 glimpse(outlier_list)
+print(outlier_list)
 glimpse(outlier_summary)
 # Outliers found in cpu_percent (9 outliers, no pattern) used and memory_usage (6 outliers, consective runs (175-180))
 # Outliers will remain in the data set but be analyzed within the Threats to Validity section.
@@ -628,7 +629,7 @@ p_energy_prompt_bar <- ggplot(energy_prompt_summary, aes(x = model, y = mean_ene
   scale_fill_manual(
     values = c("small" = "#FFC107", "large" = "#004D40"),
     name = "Prompt Size",
-    labels = c("Small", "Large")
+    labels = c("Large", "Small")
   ) +
   labs(
     title = "Mean Energy Consumption by Model and Prompt Size",
