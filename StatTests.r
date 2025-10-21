@@ -1,4 +1,5 @@
 ## This is the code where I run statistical tests to find normality, then based on normality finding p values 
+# ChatGPT was used for coding assistance
 
 library(dplyr)
 library(rstatix)
@@ -6,11 +7,10 @@ library(effsize)
 
 # You will need to add the path below if you are not in the Green Lab Project repo folder
 
-## Data read (same as DescStat)
+## Data read (same as other files)
 dat_data <- read.csv("run_table.csv") %>%
   select(run, energy_usage_joules, execution_time_sec, input_size_kb, memory_usage_mb, output_size_kb, cpu_percent, prompt_size, model, api, mobile) %>%
   mutate(
-    # Text data conversion
     prompt_size = trimws(as.character(prompt_size)),
     model = trimws(as.character(model)),
     api = trimws(as.character(api)),
@@ -40,31 +40,31 @@ get_residuals <- function(data, response) {
 }
 
 compare_groups <- function(data, response, group_var) {
-  cat("\n=============================================================\n")
-  cat(paste("👉 Testing:", response, "by", group_var, "\n"))
-  cat("=============================================================\n")
+  cat(paste("Test:", response, "by", group_var, "\n"))
 
   data$.resid <- get_residuals(data, response)
 
+  # remove residuals
   g1 <- data %>% filter(!!sym(group_var) == levels(data[[group_var]])[1]) %>% pull(.resid)
   g2 <- data %>% filter(!!sym(group_var) == levels(data[[group_var]])[2]) %>% pull(.resid)
 
   g1_label <- levels(data[[group_var]])[1]
   g2_label <- levels(data[[group_var]])[2]
 
+  # do shapiro-wilk
   sh1 <- shapiro.test(g1)
   sh2 <- shapiro.test(g2)
 
-  cat(sprintf("\nNormality check (Shapiro-Wilk): %s p=%.5f | %s p=%.5f\n",
+  cat(sprintf("\nShapiro-Wilk: %s p=%.5f | %s p=%.5f\n",
               g1_label, sh1$p.value, g2_label, sh2$p.value))
 
   if (sh1$p.value > 0.05 && sh2$p.value > 0.05) {
-    cat("✅ Both groups appear normally distributed → using parametric t-test\n")
+    cat("Normal distribution, parametric t test\n")
     test <- t.test(g1, g2)
     test_type <- "t-test"
   } else {
-    cat("⚠️ At least one group is non-normal → using Mann–Whitney (nonparametric)\n")
-    test <- wilcox.test(g1, g2)
+    cat("Non-normal, Mann-Whitney nonparametric test\n")
+    test <- wilcox.test(g1, g2) #The wilcox test on 2 parameters is the same as Mann-Whitney
     test_type <- "Mann–Whitney"
   }
 
@@ -73,9 +73,7 @@ compare_groups <- function(data, response, group_var) {
   if (test_type == "t-test") {
     mean1 <- mean(g1, na.rm = TRUE)
     mean2 <- mean(g2, na.rm = TRUE)
-    sd_pooled <- sqrt(((length(g1) - 1) * var(g1, na.rm = TRUE) +
-                       (length(g2) - 1) * var(g2, na.rm = TRUE)) /
-                       (length(g1) + length(g2) - 2))
+    sd_pooled <- sqrt(((length(g1) - 1) * var(g1, na.rm = TRUE) + (length(g2) - 1) * var(g2, na.rm = TRUE)) / (length(g1) + length(g2) - 2))
     cohen_d <- (mean1 - mean2) / sd_pooled
     cat(sprintf("Cohen’s d (effect size): %.3f\n", cohen_d))
   } else {
@@ -96,10 +94,10 @@ correlation_analysis <- function(data, var1, var2) {
               var1, sh_x$p.value, var2, sh_y$p.value))
 
   if (sh_x$p.value > 0.05 && sh_y$p.value > 0.05) {
-    cat("Both appear normal, Pearson correlation (parametric)\n")
+    cat("Both normal, Pearson (parametric)\n")
     test <- cor.test(data$.resid_x, data$.resid_y, method = "pearson")
   } else {
-    cat("Non-normality detected, Spearman correlation (nonparametric)\n")
+    cat("Nonnormal, Spearman (nonparametric)\n")
     test <- cor.test(data$.resid_x, data$.resid_y, method = "spearman")
   }
 

@@ -1,4 +1,5 @@
 ## This is the code that makes the big Table 2 and all plots
+# ChatGPT was used for coding assistance
 
 install.packages(c("tidyverse", "ggplot2", "bestNormalize", "ARTool", "lmerTest", "xtable", "kableExtra", "effsize"))
 install.packages(c("patchwork"))
@@ -18,7 +19,7 @@ library(ggpubr)
 
 # You will need to add the path below if you are not in the Green Lab Project repo folder
 
-## Load and Parse all data
+## Load and Parse all data ---------------------------------
 
 dat_data <- read.csv("run_table.csv") %>%
   select(run, energy_usage_joules, execution_time_sec, input_size_kb, memory_usage_mb, output_size_kb, cpu_percent, prompt_size, model, api, mobile) %>%
@@ -50,7 +51,7 @@ glimpse(dat_data)
 summary(dat_data)
 head(dat_data)
 
-## Get descriptive stats
+## Get descriptive stats -----------------------------------------
 
 quant_vars <- c("energy_usage_joules", "execution_time_sec", "cpu_percent", "memory_usage_mb", "input_size_kb", "output_size_kb")
 
@@ -71,7 +72,7 @@ desc_by_group <- dat_data %>%
 
 glimpse(desc_by_group)
 
-## Identify outliers!
+## Identify outliers! ---------------------------------------------------
 
 find_outliers <- function(df, var) {
   df2 <- df %>% select(llm_location, all_of(var)) %>% group_by(llm_location) %>%
@@ -101,9 +102,8 @@ glimpse(outlier_summary)
 # Outliers found in cpu_percent (9 outliers, no pattern) used and memory_usage (6 outliers, consective runs (175-180))
 # Outliers will remain in the data set but be analyzed within the Threats to Validity section.
 
-## Check for normality
 
-## Attempt normalization
+## Attempt normalization ---------------------------------------------
 vars_to_check <- c(
   "energy_usage_joules",
   "execution_time_sec",
@@ -114,13 +114,12 @@ vars_to_check <- c(
 # Check pre-occuring normality with Shapiro Wilk
 check_normality <- function(x) {
   x <- na.omit(x)
-  if (length(unique(x)) < 3) return(NA)  # skip if too few unique values
+  if (length(unique(x)) < 3) return(NA)
   return(shapiro.test(x)$p.value)
 }
 
 # Loop through variables and conditions to attempt normalization
 for (var in vars_to_check) {
-  cat("---------------------------------------\n")
   cat("Variable:", var, "\n")
 
   for (m in unique(dat_data$model)) {
@@ -134,8 +133,8 @@ for (var in vars_to_check) {
 
       p_original <- check_normality(subset_data)
 
-      cat("\nModel:", m, "| Prompt size:", p, "\n")
-      cat("  Original normality p =", round(p_original, 4), "\n")
+      cat("\nModel:", m, ", Prompt size:", p, "\n")
+      cat("Original normality p =", round(p_original, 4), "\n")
 
       # Only test transformations if non-normal
       if (!is.na(p_original) && p_original < 0.05) {
@@ -150,11 +149,11 @@ for (var in vars_to_check) {
         for (t_name in names(transformations)) {
           transformed <- suppressWarnings(transformations[[t_name]](subset_data))
           if (all(is.na(transformed))) {
-            cat("   ", t_name, ": Not applicable (contains negative or zero values)\n")
+            cat(t_name, ": Failed transformation)\n")
           } else {
             p_trans <- check_normality(transformed)
             if (!is.na(p_trans)) {
-              cat("   ", t_name, ": p =", round(p_trans, 4),
+              cat("Normalized by: ", t_name, ", p =", p_trans,
                   ifelse(p_trans > 0.05, "Normalizable\n", "Still non-normal\n"))
             }
           }
@@ -167,387 +166,13 @@ for (var in vars_to_check) {
   }
 }
 
-
-# -------------------------------------------------------------------------------------------------------------
-
-# RQ5: ENERGY USAGE normality check, divided by LLM location - both NOT NORMAL
-## This was before I realized I needed to split based on factors of model and content length
-dat_data %>%
-  group_by(llm_location) %>%
-  summarise(
-    n = n(),
-    shapiro_p = if (n >= 3) shapiro.test(energy_usage_joules)$p.value else NA_real_
-  )
-
-normality_results %>%
-  mutate(normality = ifelse(shapiro_p > 0.05, "normal", "not normal")) %>%
-  print(n = Inf)
-
-ggplot(dat_data, aes(x = seq_along(energy_usage_joules), y = energy_usage_joules)) +
-  geom_point(alpha = 0.6, color = "darkorange") +
-  theme_minimal() +
-  labs(
-    title = "Energy Usage Across Observations",
-    x = "Observation Index",
-    y = "Energy Usage (Joules)"
-  )
-
-normality_results <- dat_data %>%
-  group_by(llm_location, model) %>%
-  summarise(
-    n = n(),
-    shapiro_p = if (n >= 3) shapiro.test(energy_usage_joules)$p.value else NA_real_,
-    .groups = "drop"
-  )
-
-normality_results %>%
-  mutate(normality = ifelse(shapiro_p > 0.05, "normal", "not normal")) %>%
-  print(n = Inf)
-
-# Plot Remote models
-remote_data <- dat_data %>%
-  filter(llm_location == "remote" & model %in% c("gemma", "llama2", "qwen"))
-
-ggplot(remote_data, aes(x = seq_along(energy_usage_joules), y = energy_usage_joules)) +
-  geom_point(color = "red", alpha = 0.8, size = 2) +
-  facet_wrap(~ model, scales = "free_x", ncol = 3) +
-  labs(
-    title = "Energy Usage Across Observations (Remote Models)",
-    x = "Observation Index",
-    y = "Energy Usage (Joules)"
-  ) +
-  theme_bw() +
-  theme(
-    strip.text = element_text(size = 10, face = "bold"),
-    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
-  )
-
-# Plot Mobile models
-mobile_data <- dat_data %>%
-  filter(llm_location == "mobile" & model %in% c("gemma-1b", "llama-1b", "qwen-1.7b"))
-
-ggplot(mobile_data, aes(x = seq_along(energy_usage_joules), y = energy_usage_joules)) +
-  geom_point(color = "red", alpha = 0.8, size = 2) +
-  facet_wrap(~ model, scales = "free_x", ncol = 3) +
-  labs(
-    title = "Energy Usage Across Observations (Mobile Models)",
-    x = "Observation Index",
-    y = "Energy Usage (Joules)"
-  ) +
-  theme_bw() +
-  theme(
-    strip.text = element_text(size = 10, face = "bold"),
-    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
-  )
-
-
-# RQ5: CPU USAGE normality check, divided by LLM location - all NOT NORMAL
-## This was before I realized I needed to split based on factors of model and content length
-dat_data %>%
-  group_by(llm_location) %>%
-  summarise(
-    n = n(),
-    shapiro_p = if (n >= 3) shapiro.test(cpu_percent)$p.value else NA_real_
-  )
-
-normality_results %>%
-  mutate(normality = ifelse(shapiro_p > 0.05, "normal", "not normal")) %>%
-  print(n = Inf)
-
-ggplot(dat_data, aes(x = seq_along(cpu_percent), y = cpu_percent)) +
-  geom_point(alpha = 0.6, color = "darkorange") +
-  theme_minimal() +
-  labs(
-    title = "Percent CPU Usage Across Observations",
-    x = "Observation Index",
-    y = "CPU Usage (%)"
-  )
-
-normality_results <- dat_data %>%
-  group_by(llm_location, model) %>%
-  summarise(
-    n = n(),
-    shapiro_p = if (n >= 3) shapiro.test(cpu_percent)$p.value else NA_real_,
-    .groups = "drop"
-  )
-
-normality_results %>%
-  mutate(normality = ifelse(shapiro_p > 0.05, "normal", "not normal")) %>%
-  print(n = Inf)
-
-# Plot Remote models
-remote_data <- dat_data %>%
-  filter(llm_location == "remote" & model %in% c("gemma", "llama2", "qwen"))
-
-ggplot(remote_data, aes(x = seq_along(cpu_percent), y = cpu_percent)) +
-  geom_point(color = "red", alpha = 0.8, size = 2) +
-  facet_wrap(~ model, scales = "free_x", ncol = 3) +
-  labs(
-    title = "Percent CPU Usage Across Observations (Remote Models)",
-    x = "Observation Index",
-    y = "CPU Usage (%)"
-  ) +
-  theme_bw() +
-  theme(
-    strip.text = element_text(size = 10, face = "bold"),
-    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
-  )
-
-# Plot Mobile models
-mobile_data <- dat_data %>%
-  filter(llm_location == "mobile" & model %in% c("gemma-1b", "llama-1b", "qwen-1.7b"))
-
-ggplot(mobile_data, aes(x = seq_along(cpu_percent), y = cpu_percent)) +
-  geom_point(color = "red", alpha = 0.8, size = 2) +
-  facet_wrap(~ model, scales = "free_x", ncol = 3) +
-  labs(
-    title = "Percent CPU Usage Across Observations (Mobile Models)",
-    x = "Observation Index",
-    y = "CPU Usage (%)"
-  ) +
-  theme_bw() +
-  theme(
-    strip.text = element_text(size = 10, face = "bold"),
-    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
-  )
-
-
-
-# RQ5: MEMORY USAGE normality check, divided by LLM location and model- qwen-1.7b is normal!
-## This was before I realized I needed to split based on factors of model and content length
-
-dat_data %>%
-  group_by(llm_location) %>%
-  summarise(
-    n = n(),
-    shapiro_p = if (n >= 3) shapiro.test(memory_usage_mb)$p.value else NA_real_
-  )
-
-normality_results %>%
-  mutate(normality = ifelse(shapiro_p > 0.05, "normal", "not normal")) %>%
-  print(n = Inf)
-
-
-ggplot(dat_data, aes(x = seq_along(memory_usage_mb), y = memory_usage_mb)) +
-  geom_point(alpha = 0.6, color = "darkorange") +
-  theme_minimal() +
-  labs(
-    title = "Memory Usage Across Observations",
-    x = "Observation Index",
-    y = "Memory Usage (MB)"
-  )
-
-normality_results <- dat_data %>%
-  group_by(llm_location, model) %>%
-  summarise(
-    n = n(),
-    shapiro_p = if (n >= 3) shapiro.test(memory_usage_mb)$p.value else NA_real_,
-    .groups = "drop"
-  )
-
-normality_results %>%
-  mutate(normality = ifelse(shapiro_p > 0.05, "normal", "not normal")) %>%
-  print(n = Inf)
-
-
-# Plot Remote models
-remote_data <- dat_data %>%
-  filter(llm_location == "remote" & model %in% c("gemma", "llama2", "qwen"))
-
-ggplot(remote_data, aes(x = seq_along(memory_usage_mb), y = memory_usage_mb)) +
-  geom_point(color = "orange", alpha = 0.8, size = 2) +
-  facet_wrap(~ model, scales = "free_x", ncol = 3) +
-  labs(
-    title = "Memory Usage Across Observations (Remote Models)",
-    x = "Observation Index",
-    y = "Memory Usage (MB)"
-  ) +
-  theme_bw() +
-  theme(
-    strip.text = element_text(size = 10, face = "bold"),
-    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
-  )
-
-# Plot Mobile models
-mobile_data <- dat_data %>%
-  filter(llm_location == "mobile" & model %in% c("gemma-1b", "llama-1b", "qwen-1.7b"))
-
-ggplot(mobile_data, aes(x = seq_along(memory_usage_mb), y = memory_usage_mb)) +
-  geom_point(color = "orange", alpha = 0.8, size = 2) +
-  facet_wrap(~ model, scales = "free_x", ncol = 3) +
-  labs(
-    title = "Memory Usage Across Observations (Mobile Models)",
-    x = "Observation Index",
-    y = "Memory Usage (MB)"
-  ) +
-  theme_bw() +
-  theme(
-    strip.text = element_text(size = 10, face = "bold"),
-    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
-  )
-
-# -------------------------------------------------------------------------------------------------------------
-
-## This was AFTER -- these are the correct functions!
-# ENERGY USAGE
-dat_data %>%
-  group_by(llm_location, model, prompt_size) %>%
-  summarise(
-    n = n(),
-    shapiro_p = if (n >= 3) shapiro.test(energy_usage_joules)$p.value else NA_real_,
-    .groups = "drop"
-  ) %>%
-  mutate(normality = ifelse(shapiro_p > 0.05, "normal", "not normal")) %>%
-  print(n = Inf)
-
-# Plot Remote models (colored by prompt_size)
-remote_data <- dat_data %>%
-  filter(llm_location == "remote" & model %in% c("gemma", "llama2", "qwen"))
-
-ggplot(remote_data, aes(x = seq_along(energy_usage_joules), y = energy_usage_joules, color = prompt_size)) +
-  geom_point(alpha = 0.8, size = 2) +
-  facet_wrap(~ model, scales = "free_x", ncol = 3) +
-  labs(
-    title = "Energy Usage Across Observations (Remote Models)",
-    x = "Observation Index",
-    y = "Energy Usage (Joules)",
-    color = "Prompt Size"
-  ) +
-  theme_bw() +
-  theme(
-    strip.text = element_text(size = 10, face = "bold"),
-    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
-  )
-
-# Plot Mobile models (colored by prompt_size)
-mobile_data <- dat_data %>%
-  filter(llm_location == "mobile" & model %in% c("gemma-1b", "llama-1b", "qwen-1.7b"))
-
-ggplot(mobile_data, aes(x = seq_along(energy_usage_joules), y = energy_usage_joules, color = prompt_size)) +
-  geom_point(alpha = 0.8, size = 2) +
-  facet_wrap(~ model, scales = "free_x", ncol = 3) +
-  labs(
-    title = "Energy Usage Across Observations (Mobile Models)",
-    x = "Observation Index",
-    y = "Energy Usage (Joules)",
-    color = "Prompt Size"
-  ) +
-  theme_bw() +
-  theme(
-    strip.text = element_text(size = 10, face = "bold"),
-    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
-  )
-
-
-# CPU USAGE
-dat_data %>%
-  group_by(llm_location, model, prompt_size) %>%
-  summarise(
-    n = n(),
-    shapiro_p = if (n >= 3) shapiro.test(cpu_percent)$p.value else NA_real_,
-    .groups = "drop"
-  ) %>%
-  mutate(normality = ifelse(shapiro_p > 0.05, "normal", "not normal")) %>%
-  print(n = Inf)
-
-# Plot Remote models (colored by prompt_size)
-remote_data <- dat_data %>%
-  filter(llm_location == "remote" & model %in% c("gemma", "llama2", "qwen"))
-
-ggplot(remote_data, aes(x = seq_along(cpu_percent), y = cpu_percent, color = prompt_size)) +
-  geom_point(alpha = 0.8, size = 2) +
-  facet_wrap(~ model, scales = "free_x", ncol = 3) +
-  labs(
-    title = "Percent CPU Usage Across Observations (Remote Models)",
-    x = "Observation Index",
-    y = "CPU Usage (%)",
-    color = "Prompt Size"
-  ) +
-  theme_bw() +
-  theme(
-    strip.text = element_text(size = 10, face = "bold"),
-    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
-  )
-
-# Plot Mobile models (colored by prompt_size)
-mobile_data <- dat_data %>%
-  filter(llm_location == "mobile" & model %in% c("gemma-1b", "llama-1b", "qwen-1.7b"))
-
-ggplot(mobile_data, aes(x = seq_along(cpu_percent), y = cpu_percent, color = prompt_size)) +
-  geom_point(alpha = 0.8, size = 2) +
-  facet_wrap(~ model, scales = "free_x", ncol = 3) +
-  labs(
-    title = "Percent CPU Usage Across Observations (Mobile Models)",
-    x = "Observation Index",
-    y = "CPU Usage (%)",
-    color = "Prompt Size"
-  ) +
-  theme_bw() +
-  theme(
-    strip.text = element_text(size = 10, face = "bold"),
-    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
-  )
-
-
-# MEMORY USAGE
-dat_data %>%
-  group_by(llm_location, model, prompt_size) %>%
-  summarise(
-    n = n(),
-    shapiro_p = if (n >= 3) shapiro.test(memory_usage_mb)$p.value else NA_real_,
-    .groups = "drop"
-  ) %>%
-  mutate(normality = ifelse(shapiro_p > 0.05, "normal", "not normal")) %>%
-  print(n = Inf)
-
-# Plot Remote models (colored by prompt_size)
-remote_data <- dat_data %>%
-  filter(llm_location == "remote" & model %in% c("gemma", "llama2", "qwen"))
-
-ggplot(remote_data, aes(x = seq_along(memory_usage_mb), y = memory_usage_mb, color = prompt_size)) +
-  geom_point(alpha = 0.8, size = 2) +
-  facet_wrap(~ model, scales = "free_x", ncol = 3) +
-  labs(
-    title = "Memory Usage Across Observations (Remote Models)",
-    x = "Observation Index",
-    y = "Memory Usage (MB)",
-    color = "Prompt Size"
-  ) +
-  theme_bw() +
-  theme(
-    strip.text = element_text(size = 10, face = "bold"),
-    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
-  )
-
-# Plot Mobile models (colored by prompt_size)
-mobile_data <- dat_data %>%
-  filter(llm_location == "mobile" & model %in% c("gemma-1b", "llama-1b", "qwen-1.7b"))
-
-ggplot(mobile_data, aes(x = seq_along(memory_usage_mb), y = memory_usage_mb, color = prompt_size)) +
-  geom_point(alpha = 0.8, size = 2) +
-  facet_wrap(~ model, scales = "free_x", ncol = 3) +
-  labs(
-    title = "Memory Usage Across Observations (Mobile Models)",
-    x = "Observation Index",
-    y = "Memory Usage (MB)",
-    color = "Prompt Size"
-  ) +
-  theme_bw() +
-  theme(
-    strip.text = element_text(size = 10, face = "bold"),
-    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
-  )
-
 ## Used for RQ1 --------------
-## Violin Plot for Energy Usage based on remote or mobile and prompt size
+## Violin Plot for Energy Usage based on remote or mobile and prompt size ----------------------------
 plot_energy_violin <- function(data, y_var = "energy_usage_joules") {
   data <- data %>%
     mutate(
-      llm_location = factor(llm_location,
-                            levels = c("remote", "mobile"),
-                            labels = c("Remote", "On-device")),
-      prompt_size = factor(prompt_size,
-                           levels = c("small", "large")) # ensures small on left, large on right
+      llm_location = factor(llm_location, levels = c("remote", "mobile"), labels = c("Remote", "On-device")),
+      prompt_size = factor(prompt_size, levels = c("small", "large"))
     )
   
   ggplot(data, aes(
@@ -584,9 +209,9 @@ plot_energy_violin <- function(data, y_var = "energy_usage_joules") {
 
 plot_energy_violin(dat_data)
 
-## Latex table generator function
+## Latex table generator function -----------------------------------------------------------------
+# Summarize by model, device, and prompt size
 make_summary_latex <- function(data) {
-  # Summarize by model, device, and prompt size
   summary_table <- data %>%
     group_by(model, llm_location, prompt_size) %>%
     summarise(
@@ -606,11 +231,9 @@ make_summary_latex <- function(data) {
     ) %>%
     arrange(model, llm_location, prompt_size)
   
-  # Round to 2 decimals
   summary_table <- summary_table %>%
     mutate(across(where(is.numeric), ~ round(.x, 2)))
   
-  # Create LaTeX table
   latex_table <- summary_table %>%
     kable(
       format = "latex",
@@ -644,12 +267,10 @@ make_summary_latex <- function(data) {
 
 make_summary_latex(dat_data)
 
-
-## Bar Chart for RQ1 ---------------------
+## Bar Chart for RQ1 ----------------------------------------------------------------------------
 dat_data <- dat_data %>%
-  mutate(model = factor(model, levels = c("gemma", "gemma-1b", 
-                                          "llama2", "llama-1b", 
-                                          "qwen", "qwen-1.7b")))
+  mutate(model = recode(model, "gemma" = "Remote Gemma", "gemma-1b" = "On-Device Gemma", "llama2" = "Remote Llama", "llama-1b" = "On-Device Llama", "qwen" = "Remote Qwen", "qwen-1.7b" = "On-Device Qwen")) %>%
+  mutate(model = factor(model, levels = c("Remote Gemma", "On-Device Gemma",  "Remote Llama", "On-Device Llama", "Remote Qwen", "On-Device Qwen")))
 
 energy_summary <- dat_data %>%
   group_by(model, llm_location) %>%
@@ -658,7 +279,7 @@ energy_summary <- dat_data %>%
 ggplot(energy_summary, aes(x = model, y = mean_energy, fill = llm_location)) +
   geom_bar(stat = "identity", position = position_dodge(width = 0.8)) +
   scale_fill_manual(
-    values = c("remote" = "#D81B60", "mobile" = "#1E88E5"),
+    values = c("mobile" = "#D81B60", "remote" = "#1E88E5"),
     name = "Model location",
     labels = c("On-device", "Remote")
   ) +
@@ -684,15 +305,12 @@ dat_data %>%
 # ---------------
 ## RQ 2
 
-## Violin Plot for execution time based on remote or mobile and prompt size
+## Violin Plot for execution time based on remote or mobile and prompt size ---------------------
 plot_energy_violin <- function(data, y_var = "execution_time_sec") {
   data <- data %>%
     mutate(
-      llm_location = factor(llm_location,
-                            levels = c("remote", "mobile"),
-                            labels = c("Remote", "On-device")),
-      prompt_size = factor(prompt_size,
-                           levels = c("small", "large")) # ensures small on left, large on right
+      llm_location = factor(llm_location, levels = c("remote", "mobile"), labels = c("Remote", "On-device")),
+      prompt_size = factor(prompt_size, levels = c("small", "large"))
     )
   
   ggplot(data, aes(
@@ -730,18 +348,24 @@ plot_energy_violin(dat_data)
 
 # Noted here that the violins for execution time and energy use looked remarkably similar, 
 # so performed this as a check to make sure nothing had been accidentally overwritten.
-cor(dat_data$energy_usage_joules, dat_data$execution_time_sec, use = "complete.obs")
 summary(dat_data$energy_usage_joules)
 summary(dat_data$execution_time_sec)
 
+## Bar chart Q2 -------------------------------------------------------
+dat_data <- dat_data %>%
+  mutate(model = recode(model, "gemma" = "Remote Gemma", "gemma-1b" = "On-Device Gemma", "llama2" = "Remote Llama", "llama-1b" = "On-Device Llama", "qwen" = "Remote Qwen", "qwen-1.7b" = "On-Device Qwen")) %>%
+  mutate(model = factor(model, levels = c("Remote Gemma", "On-Device Gemma",  "Remote Llama", "On-Device Llama",  "Remote Qwen", "On-Device Qwen")))
 
-## Bar chart Q2
+execution_time_summary <- dat_data %>%
+  group_by(model, llm_location) %>%
+  summarise(mean_time = mean(execution_time_sec, na.rm = TRUE), .groups = "drop")
+
 ggplot(execution_time_summary, aes(x = model, y = mean_time, fill = llm_location)) +
   geom_bar(stat = "identity", position = position_dodge(width = 0.8)) +
   scale_fill_manual(
-    values = c("mobile" = "#D81B60", "remote" = "#1E88E5"),  # On-device = pink, Remote = blue
+    values = c("mobile" = "#D81B60", "remote" = "#1E88E5"),
     name = "Model location",
-    breaks = c("mobile", "remote"),  # On-device first, Remote second
+    breaks = c("mobile", "remote"),
     labels = c("On-device", "Remote")
   ) +
   labs(
@@ -761,7 +385,7 @@ ggplot(execution_time_summary, aes(x = model, y = mean_time, fill = llm_location
 # --------------------
 ## RQ3 and RQ4
 
-# CPU usage plot
+# CPU usage plot ------------------------------------
 p_cpu <- dat_data %>%
   mutate(
     llm_location = factor(
@@ -788,13 +412,13 @@ p_cpu <- dat_data %>%
 
 p_cpu
 
-# Memory usage plot
+# Memory usage plot -----------------------------------------------
 p_memory <- dat_data %>%
   mutate(
     llm_location = factor(
       llm_location,
       levels = c("remote", "mobile"),
-      labels = c("Remote", "On-device")  # capitalized labels
+      labels = c("Remote", "On-device")
     )
   ) %>%
   ggplot(aes(x = llm_location, y = memory_usage_mb, fill = llm_location)) +
@@ -820,7 +444,7 @@ p_cpu + p_memory
 ## ---------------------------
 ## RQ5
 
-# By LLM Location
+# By LLM Location -------------------------------------------
 p_cpu_energy <- dat_data %>%
   mutate(
     llm_location = factor(
@@ -888,7 +512,7 @@ p_memory_energy
 p_cpu_energy + p_memory_energy
 
 
-# By Prompt Size
+# By Prompt Size ---------------------------------------
 
 p_cpu_energy <- dat_data %>%
   mutate(
@@ -958,7 +582,7 @@ p_cpu_energy + p_memory_energy
 
 ## --------------------
 ## RQ6
-# Violin
+# Violin -------------------------------------------------------
 p_energy_prompt_llm <- ggplot(
   dat_data, 
   aes(x = factor(prompt_size, levels = c("small", "large")), 
@@ -990,7 +614,11 @@ p_energy_prompt_llm <- ggplot(
 
 p_energy_prompt_llm
 
-# Bar
+# Bar -----------------------------------------------------------
+dat_data <- dat_data %>%
+  mutate(model = recode(model, "gemma" = "Remote Gemma", "gemma-1b" = "On-Device Gemma", "llama2" = "Remote Llama", "llama-1b" = "On-Device Llama", "qwen" = "Remote Qwen", "qwen-1.7b" = "On-Device Qwen")) %>%
+  mutate(model = factor(model, levels = c("Remote Gemma", "On-Device Gemma",  "Remote Llama", "On-Device Llama",  "Remote Qwen", "On-Device Qwen")))
+
 energy_prompt_summary <- dat_data %>%
   group_by(model, prompt_size) %>%
   summarise(mean_energy = mean(energy_usage_joules, na.rm = TRUE), .groups = "drop")

@@ -1,0 +1,25 @@
+"model_a","model_b","prompt_size","metric","test","p_value","effect","n_pairs"
+"gemma","gemma-1b","large","energy_usage_joules","Wilcoxon signed-rank (paired)",1.86e-09,"Wilcoxon effect size NA",30
+"gemma","gemma-1b","large","execution_time_sec","paired t-test",1.49345724031476e-07,"Cohen's d = -1.972",30
+"gemma","gemma-1b","large","cpu_percent","Wilcoxon signed-rank (paired)",0.000593,"Wilcoxon effect size NA",30
+"gemma","gemma-1b","large","memory_usage_mb","Wilcoxon signed-rank (paired)",1.86e-09,"Wilcoxon effect size NA",30
+"gemma","gemma-1b","small","energy_usage_joules","paired t-test",1.98301452109585e-07,"Cohen's d = -1.987",30
+"gemma","gemma-1b","small","execution_time_sec","paired t-test",3.63103857166635e-08,"Cohen's d = -1.951",30
+"gemma","gemma-1b","small","cpu_percent","paired t-test",3.5788963302883e-12,"Cohen's d = 3.209",30
+"gemma","gemma-1b","small","memory_usage_mb","Wilcoxon signed-rank (paired)",1.86e-09,"Wilcoxon effect size NA",30
+"llama2","llama-1b","large","energy_usage_joules","paired t-test",2.36801461927663e-07,"Cohen's d = -1.601",30
+"llama2","llama-1b","large","execution_time_sec","paired t-test",4.49770209019788e-07,"Cohen's d = -1.541",30
+"llama2","llama-1b","large","cpu_percent","Wilcoxon signed-rank (paired)",0.000272,"Wilcoxon effect size NA",30
+"llama2","llama-1b","large","memory_usage_mb","Wilcoxon signed-rank (paired)",1.86e-09,"Wilcoxon effect size NA",30
+"llama2","llama-1b","small","energy_usage_joules","paired t-test",1.31302689743637e-07,"Cohen's d = -1.591",30
+"llama2","llama-1b","small","execution_time_sec","Wilcoxon signed-rank (paired)",3.79e-06,"Wilcoxon effect size NA",30
+"llama2","llama-1b","small","cpu_percent","Wilcoxon signed-rank (paired)",4.07e-06,"Wilcoxon effect size NA",30
+"llama2","llama-1b","small","memory_usage_mb","paired t-test",2.15733662399073e-34,"Cohen's d = -18.507",30
+"qwen","qwen-1.7b","large","energy_usage_joules","paired t-test",2.83993435447681e-07,"Cohen's d = -1.711",30
+"qwen","qwen-1.7b","large","execution_time_sec","paired t-test",9.76811026303739e-07,"Cohen's d = -1.582",30
+"qwen","qwen-1.7b","large","cpu_percent","paired t-test",3.7599140001256e-09,"Cohen's d = 2.277",30
+"qwen","qwen-1.7b","large","memory_usage_mb","paired t-test",4.54398050895113e-37,"Cohen's d = -23.831",30
+"qwen","qwen-1.7b","small","energy_usage_joules","Wilcoxon signed-rank (paired)",0.0175,"Wilcoxon effect size NA",30
+"qwen","qwen-1.7b","small","execution_time_sec","Wilcoxon signed-rank (paired)",0.0699,"Wilcoxon effect size NA",30
+"qwen","qwen-1.7b","small","cpu_percent","paired t-test",5.57461870546179e-12,"Cohen's d = 2.669",30
+"qwen","qwen-1.7b","small","memory_usage_mb","paired t-test",5.11437030487681e-35,"Cohen's d = -18.371",30
