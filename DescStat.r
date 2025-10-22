@@ -100,9 +100,15 @@ outlier_summary <- map_dfr(names(outlier_list), function(v) {
 glimpse(outlier_list)
 print(outlier_list)
 glimpse(outlier_summary)
-# Outliers found in cpu_percent (9 outliers, no pattern) used and memory_usage (6 outliers, consective runs (175-180))
-# Outliers will remain in the data set but be analyzed within the Threats to Validity section.
-
+# Outliers initially found in cpu_percent (9 outliers, no pattern) used and memory_usage 
+#     (6 outliers, consective runs (175-180))
+# These outlier runs were rerun - to see the outliers of the new, rerun data set, 
+#     edit line 24 of this file to read in "run_table_outliers_rerun.csv"
+# We acknowledge that leaving these outliers in the data poses some risks to data validity
+# However, rerunning the problem runs resulted in even more outliers, leading us to believe that 
+#     some amount of outliers must be naturally occuring in the data.
+# All three of the R files of this experiment can be run with the rerun data ("run_table_outliers_rerun.csv"),
+#     and replicators are welcome to do so.
 
 ## Attempt normalization ---------------------------------------------
 vars_to_check <- c(
