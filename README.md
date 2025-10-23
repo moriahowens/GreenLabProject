@@ -1,4 +1,4 @@
-#  The Energy Cost of Intelligence: An Empirical Comparison of On-Device vs Remote LLM Processing on Mobile Devices | Group 8 Green Lab
+#  The Energy Cost of Intelligence: An Empirical Comparison of On-Device vs Remote LLM Processing on Mobile Devices
 This repository is a companion page for the Green Lab project of Moriah Owens, Sonu Sagar, Kris Saliba, Luca Ratan, and Presiyan Penkov at Vrije Universiteit Amsterdam.
 
 It contains all the material required for replicating the study, including the on-device condition, the remote condition, and the statistical results.
